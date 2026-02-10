@@ -27,8 +27,8 @@ class MusicMetadata(BaseModel):
     audio_features: Optional[AudioFeatures] = Field(None, description="Audio features")
     description: Optional[str] = Field(None, description="AI-generated description")
     
-    class Config:
-        json_schema_extra = {
+    model_config = {
+        "json_schema_extra": {
             "example": {
                 "file_path": "/path/to/song.mp3",
                 "title": "Summer Vibes",
@@ -46,3 +46,4 @@ class MusicMetadata(BaseModel):
                 }
             }
         }
+    }

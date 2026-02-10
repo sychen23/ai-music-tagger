@@ -9,7 +9,14 @@ This package provides tools for automatically labeling songs using:
 
 __version__ = "0.1.0"
 
-from .pipeline import MusicTaggerPipeline
-from .models import MusicMetadata
+# Lazy imports to avoid loading heavy dependencies on module import
+def __getattr__(name):
+    if name == "MusicTaggerPipeline":
+        from .pipeline import MusicTaggerPipeline
+        return MusicTaggerPipeline
+    elif name == "MusicMetadata":
+        from .models import MusicMetadata
+        return MusicMetadata
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 __all__ = ["MusicTaggerPipeline", "MusicMetadata"]
