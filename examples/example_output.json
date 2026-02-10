@@ -1,0 +1,33 @@
+{
+  "file_path": "/path/to/song.mp3",
+  "title": "Summer Vibes",
+  "artist": "Unknown",
+  "genre": [
+    "Pop",
+    "Electronic"
+  ],
+  "mood": [
+    "Happy",
+    "Energetic",
+    "Uplifting"
+  ],
+  "instruments": [
+    "Synth",
+    "Drums",
+    "Bass"
+  ],
+  "lyrics": "Transcribed vocals would appear here...",
+  "tags": [
+    "Upbeat",
+    "Commercial",
+    "Radio-friendly"
+  ],
+  "audio_features": {
+    "tempo": 128.0,
+    "key": "C Major",
+    "duration": 195.5,
+    "energy": 0.82,
+    "valence": 0.91
+  },
+  "description": "An energetic, uplifting pop track with electronic elements. Features prominent synths and a driving beat, perfect for commercial use or upbeat content."
+}
