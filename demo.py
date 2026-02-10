@@ -182,7 +182,12 @@ FALLBACK MODE (No API key required):
 pip install -r requirements.txt
 
 # Set API key (optional, for LLM features)
+# Option 1: Environment variable
 export OPENAI_API_KEY="your-key"
+
+# Option 2: .env file (recommended)
+cp .env.example .env
+# Edit .env and add your API key
 
 # Use CLI
 music-tagger tag song.mp3

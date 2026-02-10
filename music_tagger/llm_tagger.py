@@ -1,27 +1,34 @@
 """
 LLM-based music tagging using OpenAI API.
 """
-from openai import OpenAI
+from openai import OpenAI, RateLimitError, APIError
 from typing import Dict, List, Optional
 import json
 import os
+import time
 
 
 class LLMTagger:
     """Generate music metadata using LLM reasoning."""
     
-    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-3.5-turbo"):
+    def __init__(self, api_key: Optional[str] = None, model: str = "gpt-3.5-turbo",
+                 rate_limit_delay: float = 1.0, max_retries: int = 3):
         """
         Initialize the LLM tagger.
-        
+
         Args:
             api_key: OpenAI API key (if None, reads from OPENAI_API_KEY env var)
             model: OpenAI model to use
+            rate_limit_delay: Delay in seconds between API calls to avoid rate limits
+            max_retries: Maximum number of retries for failed API calls
         """
         self.api_key = api_key or os.getenv("OPENAI_API_KEY")
         self.model = model
+        self.rate_limit_delay = rate_limit_delay
+        self.max_retries = max_retries
+        self.last_api_call_time = 0
         self.client = None
-        
+
         if self.api_key:
             self.client = OpenAI(api_key=self.api_key)
     
@@ -46,29 +53,63 @@ class LLMTagger:
         
         # Build context for LLM
         context = self._build_context(lyrics, audio_features, file_name)
-        
+
         # Create prompt
         prompt = self._create_prompt(context)
-        
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a music industry expert specializing in metadata tagging for sync licensing and catalog systems. Provide accurate, detailed tags for music files."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.7,
-                response_format={"type": "json_object"}
-            )
-            
-            result = json.loads(response.choices[0].message.content)
-            return result
-            
-        except Exception as e:
-            print(f"LLM tagging error: {e}")
-            return self._fallback_tagging(lyrics, audio_features, file_name)
+
+        # Retry logic with exponential backoff
+        for attempt in range(self.max_retries):
+            try:
+                # Rate limiting: wait before making API call
+                self._apply_rate_limit()
+
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {"role": "system", "content": "You are a music industry expert specializing in metadata tagging for sync licensing and catalog systems. Provide accurate, detailed tags for music files."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    temperature=0.7,
+                    response_format={"type": "json_object"}
+                )
+
+                result = json.loads(response.choices[0].message.content)
+                return result
+
+            except RateLimitError as e:
+                wait_time = (2 ** attempt) * self.rate_limit_delay
+                print(f"Rate limit hit. Waiting {wait_time:.1f}s before retry {attempt + 1}/{self.max_retries}...")
+                time.sleep(wait_time)
+                if attempt == self.max_retries - 1:
+                    print(f"Max retries reached. Using fallback tagging.")
+                    return self._fallback_tagging(lyrics, audio_features, file_name)
+
+            except APIError as e:
+                wait_time = (2 ** attempt) * self.rate_limit_delay
+                print(f"API error: {e}. Retrying in {wait_time:.1f}s ({attempt + 1}/{self.max_retries})...")
+                time.sleep(wait_time)
+                if attempt == self.max_retries - 1:
+                    print(f"Max retries reached. Using fallback tagging.")
+                    return self._fallback_tagging(lyrics, audio_features, file_name)
+
+            except Exception as e:
+                print(f"LLM tagging error: {e}")
+                return self._fallback_tagging(lyrics, audio_features, file_name)
+
+        return self._fallback_tagging(lyrics, audio_features, file_name)
     
-    def _build_context(self, 
+    def _apply_rate_limit(self):
+        """Apply rate limiting by waiting if necessary."""
+        current_time = time.time()
+        time_since_last_call = current_time - self.last_api_call_time
+
+        if time_since_last_call < self.rate_limit_delay:
+            sleep_time = self.rate_limit_delay - time_since_last_call
+            time.sleep(sleep_time)
+
+        self.last_api_call_time = time.time()
+
+    def _build_context(self,
                       lyrics: Optional[str],
                       audio_features: Optional[Dict],
                       file_name: Optional[str]) -> str:

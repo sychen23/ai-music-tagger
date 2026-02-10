@@ -174,8 +174,13 @@ with open("catalog.csv", "w", newline="") as f:
 
 ```python
 # Tag music library for licensing
+import glob
+
 pipeline = MusicTaggerPipeline()
-music_files = glob.glob("library/**/*.{mp3,wav}", recursive=True)
+music_files = (
+    glob.glob("library/**/*.mp3", recursive=True) +
+    glob.glob("library/**/*.wav", recursive=True)
+)
 
 results = pipeline.process_batch(music_files)
 

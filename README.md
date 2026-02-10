@@ -15,6 +15,8 @@ An open-source, AI-powered music metadata tagging pipeline that automatically la
 
 ## Installation
 
+> **⚠️ Note on Dependencies**: This project requires PyTorch and related ML libraries. The installation will download approximately **1-2 GB** of packages. Additionally, Whisper models will download **~150 MB to 3 GB** depending on the model size you choose. Ensure you have sufficient disk space and a stable internet connection.
+
 ```bash
 # Clone the repository
 git clone https://github.com/sychen23/ai-music-tagger.git
@@ -26,6 +28,13 @@ pip install -r requirements.txt
 # Or using poetry
 poetry install
 ```
+
+### System Requirements
+
+- **Python**: 3.8 or higher
+- **Disk Space**: Minimum 5 GB free (for dependencies and model cache)
+- **RAM**: Minimum 4 GB (8 GB recommended for larger Whisper models)
+- **GPU** (optional): NVIDIA GPU with CUDA support for faster transcription
 
 ## Quick Start
 
@@ -116,6 +125,43 @@ pipeline = MusicTaggerPipeline(
 )
 ```
 
+### Model Caching
+
+Whisper models are automatically downloaded and cached by Hugging Face Transformers:
+
+- **Default cache location**: `~/.cache/huggingface/hub/`
+- **Disk space required**:
+  - `whisper-tiny`: ~150 MB
+  - `whisper-base`: ~300 MB (default)
+  - `whisper-small`: ~1 GB
+  - `whisper-medium`: ~1.5 GB
+  - `whisper-large-v3`: ~3 GB
+
+To customize the cache directory, set the environment variable:
+
+```bash
+export HF_HOME="/path/to/custom/cache"
+# Or
+export TRANSFORMERS_CACHE="/path/to/custom/cache"
+```
+
+To clear the cache:
+
+```bash
+rm -rf ~/.cache/huggingface/hub/
+```
+
+### Rate Limiting
+
+The pipeline includes automatic rate limiting for OpenAI API calls to prevent errors:
+
+```python
+pipeline = MusicTaggerPipeline(
+    rate_limit_delay=1.0,  # Wait 1 second between API calls
+    max_retries=3          # Retry up to 3 times on failure
+)
+```
+
 ## Output Format
 
 The pipeline generates structured metadata in the following format:
@@ -201,9 +247,12 @@ See the `examples/` directory for more usage examples:
 
 ## Performance
 
+**Note**: Performance times are approximate and vary based on file length, system specs, and model size.
+
 - **Without transcription**: ~2-5 seconds per file
-- **With transcription**: ~10-30 seconds per file (depends on length and model)
-- **GPU acceleration**: Significantly faster transcription with CUDA
+- **With transcription**: ~10-30 seconds per file (depends on audio length and model size)
+- **GPU acceleration**: 3-5x faster transcription with CUDA-enabled GPU
+- **Batch processing**: Includes automatic rate limiting to prevent API errors
 
 ## Limitations
 

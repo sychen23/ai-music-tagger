@@ -3,6 +3,7 @@ Main pipeline for music tagging.
 """
 from typing import Optional, List
 import os
+from tqdm import tqdm
 
 from .models import MusicMetadata, AudioFeatures
 from .audio_processor import AudioProcessor
@@ -25,19 +26,35 @@ class MusicTaggerPipeline:
                  whisper_model: str = "openai/whisper-base",
                  llm_model: str = "gpt-3.5-turbo",
                  openai_api_key: Optional[str] = None,
-                 device: Optional[str] = None):
+                 device: Optional[str] = None,
+                 language: Optional[str] = None,
+                 rate_limit_delay: float = 1.0,
+                 max_retries: int = 3):
         """
         Initialize the music tagging pipeline.
-        
+
         Args:
             whisper_model: Whisper model name for transcription
             llm_model: OpenAI model for metadata generation
             openai_api_key: OpenAI API key (optional, can use env var)
             device: Device for model inference ('cuda', 'cpu', or None for auto)
+            language: Language code for transcription (e.g., 'en', 'es', 'fr').
+                     If None, Whisper will auto-detect the language.
+            rate_limit_delay: Delay in seconds between API calls (default: 1.0)
+            max_retries: Maximum number of retries for failed API calls (default: 3)
         """
         self.audio_processor = AudioProcessor()
-        self.transcriber = AudioTranscriber(model_name=whisper_model, device=device)
-        self.llm_tagger = LLMTagger(api_key=openai_api_key, model=llm_model)
+        self.transcriber = AudioTranscriber(
+            model_name=whisper_model,
+            device=device,
+            language=language
+        )
+        self.llm_tagger = LLMTagger(
+            api_key=openai_api_key,
+            model=llm_model,
+            rate_limit_delay=rate_limit_delay,
+            max_retries=max_retries
+        )
     
     def process_file(self, 
                     file_path: str,
@@ -113,27 +130,38 @@ class MusicTaggerPipeline:
     def process_batch(self,
                      file_paths: List[str],
                      transcribe: bool = True,
-                     use_llm: bool = True) -> List[MusicMetadata]:
+                     use_llm: bool = True,
+                     show_progress: bool = True) -> List[MusicMetadata]:
         """
         Process multiple audio files.
-        
+
         Args:
             file_paths: List of paths to audio files
             transcribe: Whether to transcribe lyrics
             use_llm: Whether to use LLM for tagging
-            
+            show_progress: Whether to show progress bar (default: True)
+
         Returns:
             List of MusicMetadata objects
         """
         results = []
-        
-        for i, file_path in enumerate(file_paths, 1):
-            print(f"\n[{i}/{len(file_paths)}]")
+
+        # Create progress bar iterator
+        iterator = tqdm(file_paths, desc="Processing files", unit="file", disable=not show_progress)
+
+        for file_path in iterator:
             try:
+                # Update progress bar with current file
+                if show_progress:
+                    iterator.set_postfix_str(os.path.basename(file_path)[:30])
+
                 metadata = self.process_file(file_path, transcribe=transcribe, use_llm=use_llm)
                 results.append(metadata)
             except Exception as e:
-                print(f"Error processing {file_path}: {e}")
+                if show_progress:
+                    tqdm.write(f"Error processing {file_path}: {e}")
+                else:
+                    print(f"Error processing {file_path}: {e}")
                 continue
-        
+
         return results

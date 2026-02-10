@@ -30,7 +30,8 @@ def main():
 @click.option('--no-llm', is_flag=True, help='Skip LLM tagging (use rule-based fallback)')
 @click.option('--whisper-model', default='openai/whisper-base', help='Whisper model name')
 @click.option('--llm-model', default='gpt-3.5-turbo', help='OpenAI model name')
-def tag(input_path, output, no_transcribe, no_llm, whisper_model, llm_model):
+@click.option('--language', '-l', default=None, help='Language code for transcription (e.g., en, es, fr). Auto-detect if not specified.')
+def tag(input_path, output, no_transcribe, no_llm, whisper_model, llm_model, language):
     """
     Tag audio file(s) with AI-generated metadata.
     
@@ -39,7 +40,8 @@ def tag(input_path, output, no_transcribe, no_llm, whisper_model, llm_model):
     # Initialize pipeline
     pipeline = MusicTaggerPipeline(
         whisper_model=whisper_model,
-        llm_model=llm_model
+        llm_model=llm_model,
+        language=language
     )
     
     # Determine input files
@@ -133,7 +135,7 @@ def print_metadata(metadata: MusicMetadata, detailed: bool = False):
         click.echo(f"  {metadata.lyrics[:200]}..." if len(metadata.lyrics) > 200 else f"  {metadata.lyrics}")
 
 
-def save_results(results: List[MusicMetadata], output_path: str):
+def save_results(results: List[MusicMetadata], output_path: str) -> None:
     """Save results to file (JSON or CSV)."""
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
