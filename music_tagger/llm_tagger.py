@@ -160,7 +160,6 @@ Be specific and accurate. Focus on tags that would be useful for music superviso
     
     def _extract_title(self, file_name: str) -> str:
         """Extract a readable title from file name."""
-        import os
         # Remove extension and clean up
         name = os.path.splitext(os.path.basename(file_name))[0]
         # Replace underscores and hyphens with spaces
